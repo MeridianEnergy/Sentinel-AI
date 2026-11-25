@@ -225,3 +225,65 @@ def assign_resource(
         "resource": resource
     }
 
+# OPERATIONAL DASHBOARD
+
+@app.get("/dashboard")
+def get_dashboard():
+
+    active_incidents = [
+        incident for incident in incidents
+        if incident["status"] not in ["Resolved", "Closed"]
+    ]
+
+    critical_incidents = [
+        incident for incident in active_incidents
+        if incident["priority"] == "Critical"
+    ]
+
+    awaiting_dispatch = [
+        incident for incident in active_incidents
+        if incident["status"] == "Awaiting Dispatch"
+    ]
+
+    available_resources = [
+        resource for resource in resources
+        if resource["status"] == "Available"
+    ]
+
+    dispatched_resources = [
+        resource for resource in resources
+        if resource["status"] == "Dispatched"
+    ]
+
+    on_scene_resources = [
+        resource for resource in resources
+        if resource["status"] == "On Scene"
+    ]
+
+    total_resources = len(resources)
+
+    if total_resources > 0:
+        readiness = round(
+            len(available_resources) / total_resources * 100,
+            1
+        )
+    else:
+        readiness = 0
+
+    return {
+        "system": "SENTINEL AI",
+        "environment": "SIMULATION",
+        "incidents": {
+            "active": len(active_incidents),
+            "critical": len(critical_incidents),
+            "awaiting_dispatch": len(awaiting_dispatch)
+        },
+        "resources": {
+            "total": total_resources,
+            "available": len(available_resources),
+            "dispatched": len(dispatched_resources),
+            "on_scene": len(on_scene_resources)
+        },
+        "readiness_percentage": readiness
+    }
+

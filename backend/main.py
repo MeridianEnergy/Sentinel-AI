@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from backend.schemas import IncidentCreate, ResourceCreate
+from backend.audit import record_event, get_audit_events
 
 
 app = FastAPI(
@@ -12,7 +13,7 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Temporary in-memory storage for simulated data
+# Temporary simulated data storage
 incidents = []
 resources = []
 
@@ -46,6 +47,13 @@ def create_incident(incident: IncidentCreate):
 
     incidents.append(record)
 
+    record_event(
+        action="INCIDENT_CREATED",
+        description="A new incident was registered.",
+        entity_type="INCIDENT",
+        entity_id=record["id"]
+    )
+
     return {
         "message": "Incident registered successfully",
         "incident": record
@@ -65,10 +73,16 @@ def get_incidents():
 @app.post("/resources")
 def create_resource(resource: ResourceCreate):
     record = resource.model_dump(mode="json")
-
     record["id"] = str(uuid4())
 
     resources.append(record)
+
+    record_event(
+        action="RESOURCE_CREATED",
+        description="A new emergency resource was registered.",
+        entity_type="RESOURCE",
+        entity_id=record["id"]
+    )
 
     return {
         "message": "Resource registered successfully",
@@ -81,4 +95,16 @@ def get_resources():
     return {
         "total": len(resources),
         "resources": resources
+    }
+
+
+# AUDIT MANAGEMENT
+
+@app.get("/audit")
+def get_system_audit():
+    events = get_audit_events()
+
+    return {
+        "total": len(events),
+        "events": events
     }

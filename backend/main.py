@@ -161,3 +161,67 @@ def get_system_audit():
         "total": len(events),
         "events": events
     }
+
+# RESOURCE ASSIGNMENT
+
+class ResourceAssignment(BaseModel):
+    resource_id: str
+
+
+@app.post("/incidents/{incident_id}/assign-resource")
+def assign_resource(
+    incident_id: str,
+    assignment: ResourceAssignment
+):
+    incident = next(
+        (item for item in incidents if item["id"] == incident_id),
+        None
+    )
+
+    if incident is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Incident not found."
+        )
+
+    resource = next(
+        (
+            item for item in resources
+            if item["id"] == assignment.resource_id
+        ),
+        None
+    )
+
+    if resource is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Resource not found."
+        )
+
+    if resource["status"] != "Available":
+        raise HTTPException(
+            status_code=400,
+            detail="Resource is not available for assignment."
+        )
+
+    if "assigned_resources" not in incident:
+        incident["assigned_resources"] = []
+
+    resource["status"] = "Assigned"
+    resource["assigned_incident_id"] = incident_id
+
+    incident["assigned_resources"].append(resource["id"])
+
+    record_event(
+        action="RESOURCE_ASSIGNED",
+        description="A resource was assigned to an incident.",
+        entity_type="INCIDENT",
+        entity_id=incident_id
+    )
+
+    return {
+        "message": "Resource assigned successfully.",
+        "incident_id": incident_id,
+        "resource": resource
+    }
+

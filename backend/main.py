@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from backend.schemas import IncidentCreate, ResourceCreate
 from backend.audit import record_event, get_audit_events
-
+from backend.threat import assess_threat
 
 app = FastAPI(
     title="SENTINEL AI",

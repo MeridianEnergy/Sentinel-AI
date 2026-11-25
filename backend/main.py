@@ -261,7 +261,10 @@ def get_dashboard():
     ]
 
     total_resources = len(resources)
-
+threat_assessment = assess_threat(
+    active_incidents,
+    critical_incidents
+)
     if total_resources > 0:
         readiness = round(
             len(available_resources) / total_resources * 100,
@@ -285,5 +288,6 @@ def get_dashboard():
             "on_scene": len(on_scene_resources)
         },
         "readiness_percentage": readiness
+        "threat_assessment": threat_assessment
     }
 

@@ -2,7 +2,9 @@
 from uuid import uuid4
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
 from backend.schemas import IncidentCreate, ResourceCreate
 from backend.audit import record_event, get_audit_events
 
@@ -13,17 +15,30 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Temporary simulated data storage
 incidents = []
 resources = []
+
+
+class IncidentStatusUpdate(BaseModel):
+    status: str
+
+
+VALID_STATUSES = [
+    "Reported",
+    "Awaiting Dispatch",
+    "Dispatched",
+    "On Scene",
+    "Contained",
+    "Resolved",
+    "Closed"
+]
 
 
 @app.get("/")
 def home():
     return {
         "system": "SENTINEL AI",
-        "status": "online",
-        "message": "SENTINEL AI backend is operational."
+        "status": "online"
     }
 
 
@@ -66,6 +81,44 @@ def get_incidents():
         "total": len(incidents),
         "incidents": incidents
     }
+
+
+@app.patch("/incidents/{incident_id}/status")
+def update_incident_status(
+    incident_id: str,
+    update: IncidentStatusUpdate
+):
+    if update.status not in VALID_STATUSES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid incident status."
+        )
+
+    for incident in incidents:
+        if incident["id"] == incident_id:
+            old_status = incident["status"]
+
+            incident["status"] = update.status
+            incident["updated_at"] = datetime.now(
+                timezone.utc
+            ).isoformat()
+
+            record_event(
+                action="INCIDENT_STATUS_UPDATED",
+                description=f"Status changed from {old_status} to {update.status}.",
+                entity_type="INCIDENT",
+                entity_id=incident_id
+            )
+
+            return {
+                "message": "Incident status updated.",
+                "incident": incident
+            }
+
+    raise HTTPException(
+        status_code=404,
+        detail="Incident not found."
+    )
 
 
 # RESOURCE MANAGEMENT
